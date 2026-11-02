@@ -422,4 +422,207 @@ export default function ExercisesPage() {
           onSubmit={handleCreateExercise}
           className="bg-white p-6 rounded-2xl border border-violet-200 shadow-sm space-y-4"
         >
-          <h3 className="text-sm font
+          <h3 className="text-sm font-bold text-slate-900">Ajouter un nouvel exercice au catalogue</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <input
+              type="text"
+              placeholder="Nom de l'exercice*"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              required
+              className="sm:col-span-2 px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+            />
+            <select
+              value={newMuscle}
+              onChange={(e) => setNewMuscle(e.target.value)}
+              className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+            >
+              <option value="pectoraux">Pectoraux</option>
+              <option value="dos">Dos</option>
+              <option value="jambes">Jambes</option>
+              <option value="abdos">Abdominaux</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Matériel (ex: Poulie)"
+              value={newEquipment}
+              onChange={(e) => setNewEquipment(e.target.value)}
+              className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+            />
+            <input
+              type="number"
+              placeholder="Charge par défaut (kg)"
+              value={newWeight}
+              onChange={(e) => setNewWeight(e.target.value)}
+              className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+            />
+            <button
+              type="submit"
+              className="bg-slate-950 hover:bg-violet-600 text-white font-bold rounded-xl text-xs py-2 transition cursor-pointer"
+            >
+              Ajouter au catalogue
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input
+              type="text"
+              placeholder="Description biomécanique ou conseils d'exécution (optionnel)"
+              value={newDesc}
+              onChange={(e) => setNewDesc(e.target.value)}
+              className="sm:col-span-2 px-3.5 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+            />
+            <div className="flex items-center gap-2">
+              <select
+                value={newLevel}
+                onChange={(e) => setNewLevel(e.target.value as Exercise['level'])}
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+              >
+                <option value="Débutant">Débutant</option>
+                <option value="Intermédiaire">Intermédiaire</option>
+                <option value="Avancé">Avancé</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Kcal brûlées"
+                value={newKcal}
+                onChange={(e) => setNewKcal(e.target.value)}
+                className="w-28 px-3 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50"
+              />
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Grille des Exercices avec Saisie Interactive des Charges */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {filteredExercises.map((ex) => {
+          const isDone = completedIds.includes(ex.id);
+          const perf = getPerf(ex);
+
+          return (
+            <div
+              key={ex.id}
+              className={`group bg-white p-6 rounded-2xl border transition-all flex flex-col justify-between gap-5 ${
+                isDone
+                  ? 'border-violet-600 ring-2 ring-violet-600/10 bg-violet-50/10'
+                  : 'border-slate-200/80 hover:border-slate-300 shadow-sm hover:shadow-md'
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-slate-100 text-slate-700">
+                    {ex.muscle} • {ex.equipment}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border ${getLevelBadge(ex.level)}`}>
+                    {ex.level}
+                  </span>
+                </div>
+
+                <h3 className="text-lg font-bold text-slate-950 group-hover:text-violet-600 transition-colors">
+                  {ex.name}
+                </h3>
+
+                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">{ex.desc}</p>
+              </div>
+
+              {/* Contrôleurs interactifs de Séries, Répétitions et Charge (kg) */}
+              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400">Séries</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={perf.sets}
+                    onChange={(e) => updatePerf(ex, 'sets', parseInt(e.target.value, 10) || 1)}
+                    className="w-full mt-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400">Reps</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={perf.reps}
+                    onChange={(e) => updatePerf(ex, 'reps', parseInt(e.target.value, 10) || 1)}
+                    className="w-full mt-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400">Charge (kg)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={500}
+                    value={perf.weight}
+                    onChange={(e) => updatePerf(ex, 'weight', parseInt(e.target.value, 10) || 0)}
+                    className="w-full mt-1 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-violet-600"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-4">
+                <span className="text-xs text-slate-500 font-medium">
+                  Volume :{' '}
+                  <strong className="text-slate-900">
+                    {perf.sets} × {perf.reps} {perf.weight > 0 ? `@ ${perf.weight}kg` : '(Poids du corps)'}
+                  </strong>
+                </span>
+
+                <button
+                  onClick={() => toggleComplete(ex)}
+                  className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isDone
+                      ? 'bg-violet-600 text-white shadow-sm'
+                      : 'bg-slate-950 hover:bg-violet-600 text-white'
+                  }`}
+                >
+                  {isDone ? (
+                    <>
+                      <span>✓ Validé (+{ex.kcal} kcal)</span>
+                    </>
+                  ) : (
+                    <span>Valider l&apos;exercice</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Historique des Séances Terminées */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900">Historique des séances enregistrées</h3>
+          <span className="text-xs font-semibold text-slate-400">{workoutHistory.length} séance(s)</span>
+        </div>
+
+        {workoutHistory.length === 0 ? (
+          <p className="text-xs text-slate-400 py-4 text-center">
+            Coche tes exercices ci-dessus puis clique sur « Terminer la séance » pour archiver ton entraînement.
+          </p>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {workoutHistory.map((log) => (
+              <div key={log.id} className="py-3 flex flex-wrap items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-md bg-slate-100 font-bold text-slate-700">{log.date}</span>
+                  <span className="font-bold text-slate-900">{log.exercisesCount} exercices complétés</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-slate-500">
+                    Tonnage soulevé : <strong className="text-slate-900">{log.totalVolumeKg.toLocaleString('fr-FR')} kg</strong>
+                  </span>
+                  <span className="font-black text-violet-600">+{log.totalKcal} kcal</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
