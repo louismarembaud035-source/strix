@@ -1,44 +1,14 @@
+// app/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-interface ProgramItem {
-  id: number;
-  name: string;
-  sets: string;
-  kcal: number;
-}
-
-const programsCatalog: Record<string, { title: string; duration: string; exercises: ProgramItem[] }> = {
-  push: {
-    title: 'Session Push / Pecs & Triceps',
-    duration: '45 min',
-    exercises: [
-      { id: 1, name: 'Développé couché haltères', sets: '4 × 10', kcal: 140 },
-      { id: 4, name: 'Dips lestés ou poids du corps', sets: '4 × 12', kcal: 150 },
-      { id: 8, name: 'Pompes explosives Plyo', sets: '4 × 15', kcal: 135 },
-    ],
-  },
-  pull: {
-    title: 'Session Pull / Dos & Biceps',
-    duration: '50 min',
-    exercises: [
-      { id: 3, name: 'Tractions pronation strictes', sets: '4 × Max', kcal: 160 },
-      { id: 7, name: 'Rowing buste penché', sets: '4 × 10', kcal: 155 },
-      { id: 6, name: 'Gainage dynamique & Crunchs', sets: '4 × 45s', kcal: 110 },
-    ],
-  },
-  legs: {
-    title: 'Session Legs / Bas du corps',
-    duration: '55 min',
-    exercises: [
-      { id: 2, name: 'Back Squat barre libre', sets: '4 × 8', kcal: 210 },
-      { id: 5, name: 'Fentes bulgares unilatérales', sets: '3 × 12', kcal: 180 },
-      { id: 6, name: 'Gainage dynamique & Crunchs', sets: '4 × 45s', kcal: 110 },
-    ],
-  },
-};
+import {
+  WorkoutSession,
+  defaultWorkoutsDB,
+  getAllWorkoutsFromDB,
+  ExerciseItem,
+} from '@/app/data/workoutsDB';
 
 export default function Home() {
   // Données nutritionnelles synchronisées
@@ -48,11 +18,12 @@ export default function Home() {
   const [calorieGoal, setCalorieGoal] = useState<number>(2400);
   const [proteinGoal, setProteinGoal] = useState<number>(160);
 
-  // Données d'entraînement synchronisées
+  // Données d'entraînement synchronisées avec la base de données
+  const [sessionsDB, setSessionsDB] = useState<WorkoutSession[]>(defaultWorkoutsDB);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>(defaultWorkoutsDB[0].id);
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [workoutsCount, setWorkoutsCount] = useState<number>(0);
   const [weeklyBurned, setWeeklyBurned] = useState<number[]>([320, 480, 0, 410, 390, 0, 0]);
-  const [selectedProgram, setSelectedProgram] = useState<'push' | 'pull' | 'legs'>('push');
 
   // Calculateur interactif de récupération
   const [showRecoveryEditor, setShowRecoveryEditor] = useState<boolean>(false);
@@ -66,6 +37,15 @@ export default function Home() {
   };
 
   const loadDashboardData = () => {
+    // Base de données des séances (inclut celles créées via le Quiz)
+    const allWorkouts = getAllWorkoutsFromDB();
+    setSessionsDB(allWorkouts);
+    if (allWorkouts.length > 0) {
+      setSelectedSessionId((prev) =>
+        allWorkouts.some((w) => w.id === prev) ? prev : allWorkouts[0].id
+      );
+    }
+
     // Repas
     const savedMeals = localStorage.getItem('strix_meals');
     if (savedMeals) {
@@ -163,8 +143,8 @@ export default function Home() {
     );
   };
 
-  // Cocher un exercice depuis le programme du jour
-  const toggleProgramExercise = (ex: ProgramItem) => {
+  // Cocher un exercice depuis le programme actif du Dashboard
+  const toggleProgramExercise = (ex: ExerciseItem) => {
     let updated: number[];
     let deltaKcal = 0;
     if (completedIds.includes(ex.id)) {
@@ -177,7 +157,6 @@ export default function Home() {
     setCompletedIds(updated);
     localStorage.setItem('strix_completed_exercises', JSON.stringify(updated));
 
-    // Mettre à jour la barre du jour dans l'histogramme hebdomadaire
     const todayIdx = getCurrentDayIndex();
     const newWeekly = [...weeklyBurned];
     newWeekly[todayIdx] = Math.max(0, (newWeekly[todayIdx] || 0) + deltaKcal);
@@ -189,12 +168,13 @@ export default function Home() {
   const caloriePercentage = Math.min(100, Math.round((caloriesToday / calorieGoal) * 100));
   const todayIdx = getCurrentDayIndex();
   const daysLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-  const currentProgram = programsCatalog[selectedProgram];
+  const currentSession =
+    sessionsDB.find((s) => s.id === selectedSessionId) || sessionsDB[0];
 
   return (
     <div className="space-y-8">
       
-      {/* Hero Banner avec Calculateur de Récupération Interactif */}
+      {/* Hero Banner avec Bouton Principal vers le Questionnaire */}
       <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white p-6 sm:p-10 shadow-xl">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-violet-600/30 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
@@ -203,7 +183,7 @@ export default function Home() {
           <div className="space-y-4 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-semibold text-violet-300">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
-              Système biométrique en temps réel
+              Système biométrique & Générateur de séances
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
               Dépasse tes standards.{' '}
@@ -212,23 +192,31 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-              Toutes tes données sont synchronisées : calibre ta récupération, valide tes séries du jour et contrôle tes macronutriments au gramme près.
+              Réponds à notre questionnaire en 8 étapes pour générer ta séance idéale dans la base de données, suivre tes charges et maîtriser tes macros.
             </p>
+
+            {/* Boutons d'action principaux sur l'accueil */}
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
-                href="/exercises"
-                className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-semibold px-5 py-3 rounded-xl text-sm transition shadow-lg shadow-violet-600/25"
+                href="/quiz"
+                className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold px-5 py-3 rounded-xl text-sm transition shadow-lg shadow-violet-600/30"
               >
-                <span>Ouvrir la salle d&apos;entraînement</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
+                <span>Créer ma séance sur-mesure (Quiz)</span>
+              </Link>
+              <Link
+                href="/exercises"
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white border border-white/15 font-semibold px-5 py-3 rounded-xl text-sm transition"
+              >
+                <span>Catalogue ({sessionsDB.length} séances)</span>
               </Link>
               <Link
                 href="/nutrition"
-                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white border border-white/15 font-semibold px-5 py-3 rounded-xl text-sm transition"
+                className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-semibold px-4 py-3 rounded-xl text-sm transition"
               >
-                <span>Calculateur & Macros</span>
+                <span>Nutrition</span>
               </Link>
             </div>
           </div>
@@ -329,7 +317,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Bento Grid Analytique 100 % Dynamique */}
+      {/* Bento Grid Analytique */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Carte 1 : Bilan Énergétique & Hydratation */}
@@ -399,7 +387,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Histogramme Dynamique relié aux exercices validés */}
           <div className="flex items-end justify-between gap-2 h-28 pt-2">
             {weeklyBurned.map((kcal, idx) => {
               const pct = Math.min(100, Math.max(8, Math.round((kcal / 600) * 100)));
@@ -425,78 +412,91 @@ export default function Home() {
 
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
             <span className="text-slate-500 font-medium">
-              Aujourd&apos;hui : <strong className="text-violet-600">{weeklyBurned[todayIdx] || 0} kcal brûlées</strong> ({workoutsCount} séances finies)
+              Aujourd&apos;hui : <strong className="text-violet-600">{weeklyBurned[todayIdx] || 0} kcal</strong> ({workoutsCount} séances)
             </span>
             <Link href="/exercises" className="font-bold text-slate-900 hover:text-violet-600">
-              Séance →
+              Catalogue →
             </Link>
           </div>
         </div>
 
-        {/* Carte 3 : Programme du Jour Interactif */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-5">
-          <div className="space-y-3">
+        {/* Carte 3 : Sélecteur Rapide de Séance de la Base de Données */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-4">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Programme Interactif</p>
-              <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
-                {(['push', 'pull', 'legs'] as const).map((type) => (
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Séance Active ({sessionsDB.length} en base)
+              </p>
+              <Link
+                href="/quiz"
+                className="text-[11px] font-bold text-violet-600 hover:text-violet-700 underline"
+              >
+                + Nouveau Quiz
+              </Link>
+            </div>
+
+            <select
+              value={currentSession?.id}
+              onChange={(e) => setSelectedSessionId(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-600"
+            >
+              {sessionsDB.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.isCustomGenerated ? `★ ${s.title}` : s.title} ({s.duration} min)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {currentSession && (
+            <div className="space-y-2">
+              {currentSession.exercises.slice(0, 3).map((item) => {
+                const isChecked = completedIds.includes(item.id);
+                return (
                   <button
-                    key={type}
-                    onClick={() => setSelectedProgram(type)}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition cursor-pointer ${
-                      selectedProgram === type ? 'bg-slate-950 text-white' : 'text-slate-500 hover:text-slate-900'
+                    key={item.id}
+                    onClick={() => toggleProgramExercise(item)}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs transition cursor-pointer ${
+                      isChecked
+                        ? 'bg-violet-50/70 border-violet-300 text-violet-950'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200/60 text-slate-800'
                     }`}
                   >
-                    {type}
+                    <div className="flex items-center gap-2.5 text-left">
+                      <span
+                        className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                          isChecked ? 'bg-violet-600 border-violet-600 text-white' : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {isChecked && '✓'}
+                      </span>
+                      <span className={`font-semibold line-clamp-1 ${isChecked ? 'line-through text-slate-400' : ''}`}>
+                        {item.name}
+                      </span>
+                    </div>
+                    <span className="font-bold text-slate-500 shrink-0 ml-2">
+                      {item.defaultSets}×{item.defaultReps}
+                    </span>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-slate-900">{currentProgram.title}</h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200/60">
-                {currentProgram.duration}
-              </span>
-            </div>
-          </div>
+          )}
 
-          <div className="space-y-2">
-            {currentProgram.exercises.map((item) => {
-              const isChecked = completedIds.includes(item.id);
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => toggleProgramExercise(item)}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-xs transition cursor-pointer ${
-                    isChecked
-                      ? 'bg-violet-50/70 border-violet-300 text-violet-950'
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200/60 text-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 text-left">
-                    <span
-                      className={`w-4 h-4 rounded flex items-center justify-center border ${
-                        isChecked ? 'bg-violet-600 border-violet-600 text-white' : 'border-slate-300 bg-white'
-                      }`}
-                    >
-                      {isChecked && '✓'}
-                    </span>
-                    <span className={`font-semibold ${isChecked ? 'line-through text-slate-400' : ''}`}>
-                      {item.name}
-                    </span>
-                  </div>
-                  <span className="font-bold text-slate-500 shrink-0">{item.sets}</span>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Link
+              href={`/exercises?session=${currentSession?.id || ''}`}
+              className="py-2.5 rounded-xl bg-slate-950 hover:bg-violet-600 text-white font-semibold text-xs text-center transition"
+            >
+              Ouvrir la séance
+            </Link>
+            <Link
+              href="/quiz"
+              className="py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200/60 font-bold text-xs text-center transition"
+            >
+              Lancer le Quiz
+            </Link>
           </div>
-
-          <Link
-            href="/exercises"
-            className="w-full py-2.5 rounded-xl bg-slate-950 hover:bg-violet-600 text-white font-semibold text-xs text-center transition"
-          >
-            Ouvrir tous les exercices & charges
-          </Link>
         </div>
 
       </div>
