@@ -361,4 +361,288 @@ export default function NutritionPage() {
             <p className="text-3xl font-black text-slate-950">{totalPro}g</p>
             <p className="text-xs text-slate-400 mt-0.5">Cible : {goals.proteins}g</p>
           </div>
-          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${getPct(totalPro, goals.proteins)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Glucides */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Glucides</span>
+            <span className="text-xs font-bold text-amber-500">{getPct(totalCarb, goals.carbs)}%</span>
+          </div>
+          <div>
+            <p className="text-3xl font-black text-slate-950">{totalCarb}g</p>
+            <p className="text-xs text-slate-400 mt-0.5">Cible : {goals.carbs}g</p>
+          </div>
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-500 rounded-full transition-all duration-500"
+              style={{ width: `${getPct(totalCarb, goals.carbs)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Lipides */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Lipides</span>
+            <span className="text-xs font-bold text-rose-500">{getPct(totalFat, goals.fats)}%</span>
+          </div>
+          <div>
+            <p className="text-3xl font-black text-slate-950">{totalFat}g</p>
+            <p className="text-xs text-slate-400 mt-0.5">Cible : {goals.fats}g</p>
+          </div>
+          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-rose-500 rounded-full transition-all duration-500"
+              style={{ width: `${getPct(totalFat, goals.fats)}%` }}
+            />
+          </div>
+        </div>
+
+      </div>
+
+      {/* Base de Données Alimentaire (Calcul au gramme près) + Hydratation */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Calculateur par Grammage depuis la Base de Données */}
+        <form
+          onSubmit={handleAddFromDB}
+          className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">
+              Catalogue Alimentaire (Calcul automatique au gramme près)
+            </h3>
+            <span className="text-xs text-violet-600 font-semibold">{foodDB.length} aliments en base</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                Sélectionner un aliment
+              </label>
+              <select
+                value={selectedFoodId}
+                onChange={(e) => setSelectedFoodId(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50 font-semibold text-slate-800"
+              >
+                {foodDB.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.calPer100g} kcal / 100g)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
+                Poids / Quantité (g)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={2000}
+                value={selectedGrams}
+                onChange={(e) => setSelectedGrams(e.target.value)}
+                required
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm bg-slate-50 font-black text-violet-600"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className="font-black text-slate-900">{previewCal} kcal</span>
+              <span className="text-emerald-600 font-bold">{previewPro}g Prot</span>
+              <span className="text-amber-600 font-bold">{previewCarb}g Gluc</span>
+              <span className="text-rose-500 font-bold">{previewFat}g Lip</span>
+            </div>
+
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
+            >
+              + Ajouter ({gramsNum}g)
+            </button>
+          </div>
+        </form>
+
+        {/* Tracker d'Hydratation Interactif */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600">Hydratation</span>
+              <h3 className="text-sm font-bold text-slate-900">Eau consommée</h3>
+            </div>
+            <span className="text-xl font-black text-sky-600">
+              {(waterMl / 1000).toFixed(2)} <span className="text-xs font-normal text-slate-400">/ 2.5 L</span>
+            </span>
+          </div>
+
+          <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-sky-500 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.round((waterMl / 2500) * 100))}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => updateWater(250)}
+              className="py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs transition cursor-pointer"
+            >
+              +250 ml
+            </button>
+            <button
+              type="button"
+              onClick={() => updateWater(500)}
+              className="py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs transition cursor-pointer"
+            >
+              +500 ml
+            </button>
+            <button
+              type="button"
+              onClick={() => updateWater(-waterMl)}
+              className="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Formulaire de Saisie Personnalisée (Calories, Protéines, Glucides, Lipides) */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-slate-900">
+            Saisie libre ou création d&apos;un nouvel aliment (valeurs pour 100g ou portion)
+          </h3>
+          <label className="inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={saveToDB}
+              onChange={(e) => setSaveToDB(e.target.checked)}
+              className="accent-violet-600 rounded"
+            />
+            <span>Enregistrer aussi dans ma base d&apos;aliments</span>
+          </label>
+        </div>
+
+        <form onSubmit={handleAddManualMeal} className="grid grid-cols-1 sm:grid-cols-6 gap-3">
+          <input
+            type="text"
+            placeholder="Nom du plat ou aliment*"
+            value={foodName}
+            onChange={(e) => setFoodName(e.target.value)}
+            required
+            className="sm:col-span-2 px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+          />
+          <input
+            type="number"
+            placeholder="Calories (kcal)*"
+            value={foodCalories}
+            onChange={(e) => setFoodCalories(e.target.value)}
+            required
+            className="px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+          />
+          <input
+            type="number"
+            placeholder="Protéines (g)*"
+            value={foodProteins}
+            onChange={(e) => setFoodProteins(e.target.value)}
+            required
+            className="px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+          />
+          <input
+            type="number"
+            placeholder="Glucides (g)"
+            value={foodCarbs}
+            onChange={(e) => setFoodCarbs(e.target.value)}
+            className="px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+          />
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Lipides (g)"
+              value={foodFats}
+              onChange={(e) => setFoodFats(e.target.value)}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+            />
+            <button
+              type="submit"
+              className="px-4 bg-slate-950 hover:bg-violet-600 text-white font-bold rounded-xl text-xs transition shrink-0 cursor-pointer"
+            >
+              Ajouter
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Journal des Repas de la Journée */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900">Journal nutritionnel du jour</h3>
+          <span className="text-xs font-semibold text-slate-400">{meals.length} entrée(s)</span>
+        </div>
+
+        <div className="divide-y divide-slate-100">
+          {meals.length === 0 ? (
+            <div className="text-center py-10 space-y-2">
+              <p className="text-sm font-semibold text-slate-700">Aucun repas enregistré aujourd&apos;hui</p>
+              <p className="text-xs text-slate-400">
+                Choisis un aliment avec son poids en grammes dans le catalogue ci-dessus pour calculer tes macros.
+              </p>
+            </div>
+          ) : (
+            meals.map((meal, index) => (
+              <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-3 text-sm">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                      {meal.time}
+                    </span>
+                    <span className="font-bold text-slate-900">{meal.name}</span>
+                    {meal.grams && (
+                      <span className="text-xs font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded">
+                        {meal.grams}g
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className="text-emerald-600 font-semibold">{meal.proteins}g Protéines</span>
+                    <span>•</span>
+                    <span className="text-amber-600 font-semibold">{meal.carbs}g Glucides</span>
+                    <span>•</span>
+                    <span className="text-rose-500 font-semibold">{meal.fats}g Lipides</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-4">
+                  <span className="text-base font-black text-slate-950">{meal.calories} kcal</span>
+                  <button
+                    onClick={() => removeMeal(index)}
+                    aria-label="Supprimer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+    </div>
+  );
+}
