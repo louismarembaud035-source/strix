@@ -310,7 +310,7 @@ function ExercisesContent() {
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <div className="flex flex-wrap gap-2">
-              {['all', 'pectoraux', 'dos', 'jambes', 'epaules', 'abdos'].map((m) => (
+              {['all', 'pectoraux', 'dos', 'jambes', 'epaules', 'bras', 'abdos', 'cardio'].map((m) => (
                 <button
                   key={m}
                   onClick={() => setSelectedMuscle(m)}
