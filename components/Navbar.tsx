@@ -1,3 +1,4 @@
+// components/Navbar.tsx
 'use client';
 
 import Link from 'next/link';
@@ -7,34 +8,34 @@ import { useState, useEffect } from 'react';
 export default function Navbar() {
   const pathname = usePathname();
   const [streak, setStreak] = useState<number>(1);
-
-  // Chronomètre de repos intégré
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isRunning, setIsRunning] = useState<boolean>(false);
 
   const syncNavbarData = () => {
-    const savedStreak = localStorage.getItem('strix_streak');
     const savedWorkouts = localStorage.getItem('strix_workout_history');
     const savedMeals = localStorage.getItem('strix_meals');
-
-    if (savedStreak) {
-      setStreak(parseInt(savedStreak, 10) || 1);
-    } else {
-      let base = 1;
-      if (savedWorkouts && JSON.parse(savedWorkouts).length > 0) base += JSON.parse(savedWorkouts).length;
-      if (savedMeals && JSON.parse(savedMeals).length > 0) base += 1;
-      setStreak(base);
+    let base = 1;
+    if (savedWorkouts) {
+      try {
+        base += JSON.parse(savedWorkouts).length;
+      } catch (e) {
+        console.error(e);
+      }
     }
+    if (savedMeals) {
+      try {
+        if (JSON.parse(savedMeals).length > 0) base += 1;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setStreak(base);
   };
 
   useEffect(() => {
     syncNavbarData();
     window.addEventListener('strix-update', syncNavbarData);
-    window.addEventListener('storage', syncNavbarData);
-    return () => {
-      window.removeEventListener('strix-update', syncNavbarData);
-      window.removeEventListener('storage', syncNavbarData);
-    };
+    return () => window.removeEventListener('strix-update', syncNavbarData);
   }, []);
 
   useEffect(() => {
@@ -70,7 +71,16 @@ export default function Navbar() {
       ),
     },
     {
-      name: 'Entraînements',
+      name: 'Quiz Séance',
+      path: '/quiz',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      ),
+    },
+    {
+      name: 'Catalogue & Séances',
       path: '/exercises',
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -93,7 +103,6 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/85 border-b border-slate-200/80 transition-all">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
         
-        {/* Identité de marque */}
         <Link href="/" className="flex items-center gap-3 group shrink-0">
           <div className="w-9 h-9 rounded-xl bg-slate-950 flex items-center justify-center shadow-md shadow-violet-500/10 group-hover:bg-violet-600 transition-colors">
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -108,15 +117,14 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Liens de navigation */}
-        <nav className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+        <nav className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 overflow-x-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.path;
             return (
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-white text-slate-950 shadow-sm border border-slate-200/60'
                     : 'text-slate-500 hover:text-slate-900'
@@ -129,12 +137,8 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Outils rapides : Chronomètre de repos & Série active */}
         <div className="hidden lg:flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200/70">
-            <svg className="w-3.5 h-3.5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
             <span className="text-xs font-black text-slate-900 min-w-[36px] text-center">
               {timeLeft > 0 ? formatTime(timeLeft) : 'Repos'}
             </span>
@@ -150,17 +154,6 @@ export default function Navbar() {
             >
               90s
             </button>
-            {timeLeft > 0 && (
-              <button
-                onClick={() => {
-                  setIsRunning(false);
-                  setTimeLeft(0);
-                }}
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
-              >
-                Stop
-              </button>
-            )}
           </div>
 
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200/80">
