@@ -11,12 +11,6 @@ import {
   getAllWorkoutsFromDB,
 } from '@/app/data/workoutsDB';
 
-interface CustomPerf {
-  sets: number;
-  reps: number;
-  weight: number;
-}
-
 function ExercisesContent() {
   const searchParams = useSearchParams();
   const activeSessionParam = searchParams.get('session');
@@ -27,8 +21,6 @@ function ExercisesContent() {
 
   const [selectedMuscle, setSelectedMuscle] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [completedIds, setCompletedIds] = useState<number[]>([]);
-  const [perfs, setPerfs] = useState<Record<number, CustomPerf>>({});
 
   useEffect(() => {
     const allSessions = getAllWorkoutsFromDB();
@@ -40,27 +32,8 @@ function ExercisesContent() {
     } else if (allSessions.length > 0 && !selectedSessionId) {
       setSelectedSessionId(allSessions[0].id);
     }
-
-    const savedCompleted = localStorage.getItem('strix_completed_exercises');
-    if (savedCompleted) {
-      try {
-        setCompletedIds(JSON.parse(savedCompleted));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    const savedPerfs = localStorage.getItem('strix_exercise_perfs');
-    if (savedPerfs) {
-      try {
-        setPerfs(JSON.parse(savedPerfs));
-      } catch (e) {
-        console.error(e);
-      }
-    }
   }, [activeSessionParam]);
 
-  // Rassemble tous les exercices uniques de toutes les séances de la base de données
   const allExercisesCatalog: ExerciseItem[] = (() => {
     const map = new Map<string, ExerciseItem>();
     sessionsDB.forEach((session) => {
@@ -76,38 +49,6 @@ function ExercisesContent() {
   const activeSession =
     sessionsDB.find((s) => s.id === selectedSessionId) || sessionsDB[0];
 
-  const getPerf = (ex: ExerciseItem): CustomPerf => {
-    return (
-      perfs[ex.id] || {
-        sets: ex.defaultSets,
-        reps: ex.defaultReps,
-        weight: ex.defaultWeight,
-      }
-    );
-  };
-
-  const updatePerf = (ex: ExerciseItem, field: keyof CustomPerf, val: number) => {
-    const current = getPerf(ex);
-    const updated = {
-      ...perfs,
-      [ex.id]: { ...current, [field]: Math.max(0, val) },
-    };
-    setPerfs(updated);
-    localStorage.setItem('strix_exercise_perfs', JSON.stringify(updated));
-  };
-
-  const toggleComplete = (ex: ExerciseItem) => {
-    let updated: number[];
-    if (completedIds.includes(ex.id)) {
-      updated = completedIds.filter((id) => id !== ex.id);
-    } else {
-      updated = [...completedIds, ex.id];
-    }
-    setCompletedIds(updated);
-    localStorage.setItem('strix_completed_exercises', JSON.stringify(updated));
-    window.dispatchEvent(new Event('strix-update'));
-  };
-
   const filteredExercises = allExercisesCatalog.filter((ex) => {
     const matchesMuscle = selectedMuscle === 'all' || ex.muscle === selectedMuscle;
     const matchesSearch =
@@ -119,17 +60,17 @@ function ExercisesContent() {
   return (
     <div className="space-y-8">
       
-      {/* En-tête + Bouton d'accès direct au Questionnaire */}
+      {/* En-tête Catalogue */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-sm">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-600">
-            <span>Base de Données Centralisée ({sessionsDB.length} séances disponibles)</span>
+            <span>Bibliothèque Athlétique ({sessionsDB.length} séances • {allExercisesCatalog.length} exercices)</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">
-            Catalogue des Séances & Exercices
+            Catalogue & Programmes
           </h1>
           <p className="text-sm text-slate-500">
-            Retrouve toutes les séances de la base de données ainsi que les programmes créés sur-mesure via le questionnaire.
+            Consulte les mouvements ou lance un entraînement complet directement dans le Player live.
           </p>
         </div>
 
@@ -138,12 +79,12 @@ function ExercisesContent() {
             href="/quiz"
             className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold px-5 py-3 rounded-2xl text-xs sm:text-sm transition shadow-lg shadow-violet-600/20"
           >
-            <span>⚡ Générer une séance via le Quiz</span>
+            <span>⚡ Générer via le Quiz</span>
           </Link>
         </div>
       </div>
 
-      {/* Sélecteur d'onglets : Catalogue de Séances vs Tous les Exercices */}
+      {/* Onglets Catalogue */}
       <div className="flex items-center gap-2 bg-slate-200/70 p-1.5 rounded-2xl w-fit">
         <button
           onClick={() => setActiveTab('sessions')}
@@ -153,7 +94,7 @@ function ExercisesContent() {
               : 'text-slate-600 hover:text-slate-950'
           }`}
         >
-          Catalogue des Séances ({sessionsDB.length})
+          Séances complètes ({sessionsDB.length})
         </button>
         <button
           onClick={() => setActiveTab('exercises')}
@@ -163,17 +104,17 @@ function ExercisesContent() {
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Tous les Exercices ({allExercisesCatalog.length})
+          Exercices unitaires ({allExercisesCatalog.length})
         </button>
       </div>
 
       {activeTab === 'sessions' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Colonne Gauche : Liste de toutes les séances dans la base de données */}
+          {/* Liste des séances à gauche */}
           <div className="space-y-3">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
-              Sélectionner une séance du catalogue
+              Choisir un programme
             </h2>
             {sessionsDB.map((session) => {
               const isSelected = activeSession?.id === session.id;
@@ -212,101 +153,54 @@ function ExercisesContent() {
             })}
           </div>
 
-          {/* Colonne Droite : Détail et exécution de la séance active */}
+          {/* Fiche détaillée de la séance à droite */}
           {activeSession && (
             <div className="lg:col-span-2 space-y-5">
-              <div className="bg-slate-950 text-white p-6 sm:p-8 rounded-3xl space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="bg-slate-950 text-white p-6 sm:p-8 rounded-3xl space-y-4 flex flex-col justify-between">
+                <div>
                   <span className="text-xs font-bold uppercase tracking-widest text-violet-400">
-                    {activeSession.isCustomGenerated
-                      ? '★ Séance idéale générée par ton questionnaire'
-                      : 'Programme Officiel Strix'}
+                    {activeSession.isCustomGenerated ? 'Programme Sur-Mesure' : 'Programme Officiel Strix'}
                   </span>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 text-white">
-                    {activeSession.exercises.length} exercices • {activeSession.totalKcal} kcal
-                  </span>
+                  <h2 className="text-2xl font-black mt-1">{activeSession.title}</h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-2">{activeSession.subtitle}</p>
                 </div>
-                <h2 className="text-2xl font-black">{activeSession.title}</h2>
-                <p className="text-xs sm:text-sm text-slate-300">{activeSession.subtitle}</p>
+
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t border-white/10">
+                  <span className="text-xs font-medium text-slate-400">
+                    {activeSession.exercises.length} exercices • {activeSession.duration} min • {activeSession.totalKcal} kcal
+                  </span>
+                  <Link
+                    href={`/workout?session=${activeSession.id}`}
+                    className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-lg shadow-emerald-500/20"
+                  >
+                    <span>Démarrer l'entraînement en direct ▶</span>
+                  </Link>
+                </div>
               </div>
 
-              {/* Liste des exercices de la séance active */}
-              <div className="space-y-4">
-                {activeSession.exercises.map((ex, index) => {
-                  const isDone = completedIds.includes(ex.id);
-                  const perf = getPerf(ex);
-                  return (
-                    <div
-                      key={ex.id}
-                      className={`bg-white p-5 sm:p-6 rounded-2xl border transition-all space-y-4 ${
-                        isDone
-                          ? 'border-violet-600 ring-2 ring-violet-600/10'
-                          : 'border-slate-200/80 shadow-sm'
-                      }`}
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-violet-600">
-                            Exercice {index + 1} • {ex.muscle} ({ex.equipment})
-                          </span>
-                          <h3 className="text-base sm:text-lg font-bold text-slate-950">{ex.name}</h3>
-                        </div>
-                        <button
-                          onClick={() => toggleComplete(ex)}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
-                            isDone
-                              ? 'bg-violet-600 text-white'
-                              : 'bg-slate-950 hover:bg-violet-600 text-white'
-                          }`}
-                        >
-                          {isDone ? `✓ Validé (+${ex.kcal} kcal)` : 'Valider la série'}
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-slate-500">{ex.desc}</p>
-
-                      <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-slate-400">Séries</label>
-                          <input
-                            type="number"
-                            min={1}
-                            value={perf.sets}
-                            onChange={(e) => updatePerf(ex, 'sets', parseInt(e.target.value, 10) || 1)}
-                            className="w-full mt-1 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-slate-400">Répétitions</label>
-                          <input
-                            type="number"
-                            min={1}
-                            value={perf.reps}
-                            onChange={(e) => updatePerf(ex, 'reps', parseInt(e.target.value, 10) || 1)}
-                            className="w-full mt-1 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-900"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase text-slate-400">Charge (kg)</label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={perf.weight}
-                            onChange={(e) => updatePerf(ex, 'weight', parseInt(e.target.value, 10) || 0)}
-                            className="w-full mt-1 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-black text-violet-600"
-                          />
-                        </div>
-                      </div>
+              {/* Aperçu des mouvements de la séance */}
+              <div className="space-y-3">
+                {activeSession.exercises.map((ex, index) => (
+                  <div key={ex.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                        Exercice {index + 1} • {ex.muscle}
+                      </span>
+                      <h3 className="text-sm sm:text-base font-bold text-slate-950">{ex.name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{ex.equipment}</p>
                     </div>
-                  );
-                })}
+                    <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 shrink-0">
+                      {ex.defaultSets} × {ex.defaultReps}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
         </div>
       ) : (
-        /* Vue 2 : Bibliothèque complète de tous les exercices */
+        /* Vue bibliothèque complète avec filtres */
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <div className="flex flex-wrap gap-2">
@@ -326,7 +220,7 @@ function ExercisesContent() {
             </div>
             <input
               type="text"
-              placeholder="Rechercher un exercice ou équipement..."
+              placeholder="Rechercher un exercice..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm min-w-[240px]"
@@ -334,37 +228,25 @@ function ExercisesContent() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredExercises.map((ex) => {
-              const isDone = completedIds.includes(ex.id);
-              return (
-                <div
-                  key={ex.id}
-                  className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between gap-4"
-                >
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-bold uppercase">
-                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700">{ex.muscle}</span>
-                      <span className="text-violet-600">{ex.equipment}</span>
-                    </div>
-                    <h3 className="font-bold text-slate-950 text-base">{ex.name}</h3>
-                    <p className="text-xs text-slate-500">{ex.desc}</p>
+            {filteredExercises.map((ex) => (
+              <div
+                key={ex.id}
+                className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between gap-4"
+              >
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-bold uppercase">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700">{ex.muscle}</span>
+                    <span className="text-violet-600">{ex.equipment}</span>
                   </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                    <span className="text-xs font-bold text-slate-700">
-                      {ex.defaultSets} × {ex.defaultReps} ({ex.kcal} kcal)
-                    </span>
-                    <button
-                      onClick={() => toggleComplete(ex)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer ${
-                        isDone ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-950 hover:text-white'
-                      }`}
-                    >
-                      {isDone ? '✓ Validé' : 'Valider'}
-                    </button>
-                  </div>
+                  <h3 className="font-bold text-slate-950 text-base">{ex.name}</h3>
+                  <p className="text-xs text-slate-500">{ex.desc}</p>
                 </div>
-              );
-            })}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs font-bold text-slate-700">
+                  <span>Conseil : {ex.defaultSets} × {ex.defaultReps}</span>
+                  <span className="text-violet-600">~{ex.kcal} kcal</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
