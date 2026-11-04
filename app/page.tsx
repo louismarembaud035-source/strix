@@ -165,6 +165,21 @@ export default function Home() {
     window.dispatchEvent(new Event('strix-update'));
   };
 
+  // Ajout rapide d'eau pour la gourde animée
+  const addWater = (amount: number) => {
+    const newWater = waterToday + amount;
+    setWaterToday(newWater);
+    localStorage.setItem('strix_water', newWater.toString());
+  };
+
+  // Message d'accueil dynamique selon l'heure
+  const currentHour = new Date().getHours();
+  let greetingMessage = "Prêt à tout casser ?";
+  if (currentHour >= 5 && currentHour < 12) greetingMessage = "Prêt à tout casser ce matin ?";
+  else if (currentHour >= 12 && currentHour < 18) greetingMessage = "Bonne séance cet après-midi !";
+  else if (currentHour >= 18 && currentHour < 23) greetingMessage = "Séance du soir, ne lâche rien !";
+  else greetingMessage = "Séance tardive, respect !";
+
   const caloriePercentage = Math.min(100, Math.round((caloriesToday / calorieGoal) * 100));
   const todayIdx = getCurrentDayIndex();
   const daysLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -174,7 +189,7 @@ export default function Home() {
   return (
     <div className="space-y-8">
       
-      {/* Hero Banner avec Bouton Principal vers le Questionnaire */}
+      {/* Hero Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white p-6 sm:p-10 shadow-xl">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-violet-600/30 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
@@ -186,7 +201,7 @@ export default function Home() {
               Système biométrique & Générateur de séances
             </div>
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-              Dépasse tes standards.{' '}
+              {greetingMessage}{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-300">
                 Chaque jour.
               </span>
@@ -204,19 +219,31 @@ export default function Home() {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
-                <span>Créer ma séance sur-mesure (Quiz)</span>
+                <span>Créer ma séance (Quiz)</span>
               </Link>
               <Link
                 href="/exercises"
                 className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white border border-white/15 font-semibold px-5 py-3 rounded-xl text-sm transition"
               >
-                <span>Catalogue ({sessionsDB.length} séances)</span>
+                <span>Catalogue</span>
               </Link>
               <Link
                 href="/nutrition"
                 className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-semibold px-4 py-3 rounded-xl text-sm transition"
               >
                 <span>Nutrition</span>
+              </Link>
+              
+              {/* Bouton Paramètres sans emoji */}
+              <Link
+                href="/settings"
+                className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-semibold px-4 py-3 rounded-xl text-sm transition"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Paramètres</span>
               </Link>
             </div>
           </div>
@@ -277,7 +304,7 @@ export default function Home() {
                 </div>
                 <div>
                   <div className="flex justify-between text-slate-300 mb-1">
-                    <span>Niveau d&apos;énergie</span>
+                    <span>Niveau d'énergie</span>
                     <span className="font-bold">{energyLevel} / 10</span>
                   </div>
                   <input
@@ -356,9 +383,27 @@ export default function Home() {
                   {proteinsToday}g <span className="text-xs font-normal text-slate-400">/ {proteinGoal}g</span>
                 </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <p className="text-[10px] font-bold uppercase text-slate-400">Hydratation</p>
-                <p className="text-sm font-black text-sky-600">{(waterToday / 1000).toFixed(2)} L</p>
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex flex-col justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-6 h-10 bg-sky-100 rounded-md overflow-hidden border border-sky-200 shrink-0">
+                    <div 
+                      className="absolute bottom-0 left-0 right-0 bg-sky-500 transition-all duration-1000 ease-out"
+                      style={{ height: `${Math.min(100, (waterToday / 3000) * 100)}%` }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-slate-400">Hydratation</p>
+                    <p className="text-sm font-black text-sky-600">
+                      {(waterToday / 1000).toFixed(2)} L <span className="text-[10px] text-slate-400 font-normal">/ 3.0L</span>
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => addWater(250)}
+                  className="mt-2 w-full py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-700 font-bold text-[10px] rounded-lg transition"
+                >
+                  + 250ml
+                </button>
               </div>
             </div>
           </div>
@@ -412,7 +457,7 @@ export default function Home() {
 
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
             <span className="text-slate-500 font-medium">
-              Aujourd&apos;hui : <strong className="text-violet-600">{weeklyBurned[todayIdx] || 0} kcal</strong> ({workoutsCount} séances)
+              Aujourd'hui : <strong className="text-violet-600">{weeklyBurned[todayIdx] || 0} kcal</strong> ({workoutsCount} séances)
             </span>
             <Link href="/exercises" className="font-bold text-slate-900 hover:text-violet-600">
               Catalogue →
@@ -485,16 +530,16 @@ export default function Home() {
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Link
-              href={`/exercises?session=${currentSession?.id || ''}`}
+              href={`/workout?session=${currentSession?.id || ''}`}
               className="py-2.5 rounded-xl bg-slate-950 hover:bg-violet-600 text-white font-semibold text-xs text-center transition"
             >
-              Ouvrir la séance
+              Démarrer le Live
             </Link>
             <Link
-              href="/quiz"
+              href="/exercises"
               className="py-2.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200/60 font-bold text-xs text-center transition"
             >
-              Lancer le Quiz
+              Voir le détail
             </Link>
           </div>
         </div>
