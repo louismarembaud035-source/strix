@@ -1,9 +1,23 @@
+// app/layout.tsx
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import BottomNav from '@/components/BottomNav';
 
-export const metadata = {
-  title: 'STRIX — Plateforme de Performance & Nutrition',
-  description: 'Suivi analytique des entraînements et de la nutrition quotidienne.',
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: 'Strix - Dépasse tes standards',
+  description: 'Système biométrique et générateur de séances d\'entraînement.',
+  manifest: '/manifest.json',
+};
+
+export const viewport: Viewport = {
+  themeColor: '#020617',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -13,25 +27,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col font-sans antialiased selection:bg-violet-600 selection:text-white">
-        
+      <body className={`${inter.className} bg-slate-50 min-h-screen pb-20 sm:pb-0`}>
         <Navbar />
-
-        <main className="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
+        <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           {children}
         </main>
-
-        <footer className="border-t border-slate-200/80 bg-white mt-16">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400 font-medium">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-violet-600" />
-              <span className="font-bold text-slate-700">STRIX OS</span>
-              <span>— Architecture d'entraînement haute performance</span>
-            </div>
-            <div>Système v2.0 • Next.js & Tailwind CSS</div>
-          </div>
-        </footer>
-
+        <BottomNav />
       </body>
     </html>
   );
