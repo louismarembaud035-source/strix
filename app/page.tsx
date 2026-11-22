@@ -9,6 +9,7 @@ import {
   getAllWorkoutsFromDB,
   ExerciseItem,
 } from '@/app/data/workoutsDB';
+import BodyMap from '@/components/BodyMap';
 
 export default function Home() {
   // Données nutritionnelles synchronisées
@@ -18,26 +19,52 @@ export default function Home() {
   const [calorieGoal, setCalorieGoal] = useState<number>(2400);
   const [proteinGoal, setProteinGoal] = useState<number>(160);
 
-  // Données d'entraînement synchronisées avec la base de données
+  // Données d'entraînement synchronisées
   const [sessionsDB, setSessionsDB] = useState<WorkoutSession[]>(defaultWorkoutsDB);
   const [selectedSessionId, setSelectedSessionId] = useState<string>(defaultWorkoutsDB[0].id);
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [workoutsCount, setWorkoutsCount] = useState<number>(0);
   const [weeklyBurned, setWeeklyBurned] = useState<number[]>([320, 480, 0, 410, 390, 0, 0]);
 
-  // Calculateur interactif de récupération
+  // Calculateur interactif de récupération (SNC)
   const [showRecoveryEditor, setShowRecoveryEditor] = useState<boolean>(false);
   const [sleepHours, setSleepHours] = useState<number>(8);
   const [energyLevel, setEnergyLevel] = useState<number>(8);
   const [sorenessLevel, setSorenessLevel] = useState<number>(2);
+
+  // État de récupération biométrique des muscles (0 à 100%)
+  const [recoveryState, setRecoveryState] = useState<Record<string, number>>({
+    pectoraux: 100, dos: 100, jambes: 100, epaules: 100, bras: 100, abdos: 100, cardio: 100
+  });
 
   const getCurrentDayIndex = () => {
     const day = new Date().getDay();
     return day === 0 ? 6 : day - 1; // 0 = Lun, 6 = Dim
   };
 
+  const calculateBiologicalRecovery = () => {
+    const savedMuscleLogs = localStorage.getItem('strix_muscle_history');
+    if (!savedMuscleLogs) return;
+
+    try {
+      const logs = JSON.parse(savedMuscleLogs) as Record<string, number>;
+      const now = Date.now();
+      const RECOVERY_TIME_MS = 48 * 60 * 60 * 1000; // 48 heures
+
+      const newState: Record<string, number> = {};
+      Object.keys(logs).forEach((muscle) => {
+        const timeElapsed = now - logs[muscle];
+        const recoveryPercentage = Math.min(100, Math.max(0, (timeElapsed / RECOVERY_TIME_MS) * 100));
+        newState[muscle] = Math.round(recoveryPercentage);
+      });
+      
+      setRecoveryState((prev) => ({ ...prev, ...newState }));
+    } catch (e) {
+      console.error("Erreur de calcul de récupération", e);
+    }
+  };
+
   const loadDashboardData = () => {
-    // Base de données des séances (inclut celles créées via le Quiz)
     const allWorkouts = getAllWorkoutsFromDB();
     setSessionsDB(allWorkouts);
     if (allWorkouts.length > 0) {
@@ -46,7 +73,6 @@ export default function Home() {
       );
     }
 
-    // Repas
     const savedMeals = localStorage.getItem('strix_meals');
     if (savedMeals) {
       try {
@@ -61,7 +87,6 @@ export default function Home() {
       setProteinsToday(0);
     }
 
-    // Objectifs
     const savedGoals = localStorage.getItem('strix_goals');
     if (savedGoals) {
       try {
@@ -73,11 +98,9 @@ export default function Home() {
       }
     }
 
-    // Hydratation
     const savedWater = localStorage.getItem('strix_water');
     if (savedWater) setWaterToday(parseInt(savedWater, 10) || 0);
 
-    // Exercices cochés aujourd'hui
     const savedCompleted = localStorage.getItem('strix_completed_exercises');
     if (savedCompleted) {
       try {
@@ -87,7 +110,6 @@ export default function Home() {
       }
     }
 
-    // Historique des séances
     const savedHistory = localStorage.getItem('strix_workout_history');
     if (savedHistory) {
       try {
@@ -97,7 +119,6 @@ export default function Home() {
       }
     }
 
-    // Charge hebdomadaire
     const savedWeekly = localStorage.getItem('strix_weekly_kcal');
     if (savedWeekly) {
       try {
@@ -107,7 +128,6 @@ export default function Home() {
       }
     }
 
-    // Récupération
     const savedRec = localStorage.getItem('strix_recovery');
     if (savedRec) {
       try {
@@ -119,15 +139,23 @@ export default function Home() {
         console.error(e);
       }
     }
+
+    calculateBiologicalRecovery();
   };
 
   useEffect(() => {
     loadDashboardData();
     window.addEventListener('strix-update', loadDashboardData);
-    return () => window.removeEventListener('strix-update', loadDashboardData);
+    
+    // Rafraîchissement du BodyMap toutes les minutes
+    const interval = setInterval(calculateBiologicalRecovery, 60000);
+    
+    return () => {
+      window.removeEventListener('strix-update', loadDashboardData);
+      clearInterval(interval);
+    };
   }, []);
 
-  // Calcul du score de récupération (sur 100%)
   const sleepScore = Math.min(40, (sleepHours / 8) * 40);
   const energyScore = (energyLevel / 10) * 35;
   const sorenessScore = ((10 - sorenessLevel) / 10) * 25;
@@ -143,7 +171,6 @@ export default function Home() {
     );
   };
 
-  // Cocher un exercice depuis le programme actif du Dashboard
   const toggleProgramExercise = (ex: ExerciseItem) => {
     let updated: number[];
     let deltaKcal = 0;
@@ -153,6 +180,13 @@ export default function Home() {
     } else {
       updated = [...completedIds, ex.id];
       deltaKcal = ex.kcal;
+      
+      // Injecte le stress musculaire dans le BodyMap lors de la validation
+      const savedLogs = localStorage.getItem('strix_muscle_history');
+      const logs = savedLogs ? JSON.parse(savedLogs) : {};
+      logs[ex.muscle] = Date.now();
+      localStorage.setItem('strix_muscle_history', JSON.stringify(logs));
+      calculateBiologicalRecovery();
     }
     setCompletedIds(updated);
     localStorage.setItem('strix_completed_exercises', JSON.stringify(updated));
@@ -165,14 +199,21 @@ export default function Home() {
     window.dispatchEvent(new Event('strix-update'));
   };
 
-  // Ajout rapide d'eau pour la gourde animée
   const addWater = (amount: number) => {
     const newWater = waterToday + amount;
     setWaterToday(newWater);
     localStorage.setItem('strix_water', newWater.toString());
   };
 
-  // Message d'accueil dynamique selon l'heure
+  // Test API visuel (pour voir l'algorithme BodyMap réagir)
+  const simulateWorkoutStress = (muscle: string) => {
+    const savedLogs = localStorage.getItem('strix_muscle_history');
+    const logs = savedLogs ? JSON.parse(savedLogs) : {};
+    logs[muscle] = Date.now();
+    localStorage.setItem('strix_muscle_history', JSON.stringify(logs));
+    calculateBiologicalRecovery();
+  };
+
   const currentHour = new Date().getHours();
   let greetingMessage = "Prêt à tout casser ?";
   if (currentHour >= 5 && currentHour < 12) greetingMessage = "Prêt à tout casser ce matin ?";
@@ -183,18 +224,21 @@ export default function Home() {
   const caloriePercentage = Math.min(100, Math.round((caloriesToday / calorieGoal) * 100));
   const todayIdx = getCurrentDayIndex();
   const daysLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-  const currentSession =
-    sessionsDB.find((s) => s.id === selectedSessionId) || sessionsDB[0];
+  const currentSession = sessionsDB.find((s) => s.id === selectedSessionId) || sessionsDB[0];
+
+  const globalMuscleReadiness = Math.round(
+    Object.values(recoveryState).reduce((a, b) => a + b, 0) / Object.keys(recoveryState).length
+  );
 
   return (
     <div className="space-y-8">
       
-      {/* Hero Banner */}
+      {/* Hero Banner avec BodyMap Intégrée */}
       <div className="relative overflow-hidden rounded-3xl bg-slate-950 text-white p-6 sm:p-10 shadow-xl">
         <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-violet-600/30 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-8">
           <div className="space-y-4 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-semibold text-violet-300">
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
@@ -210,22 +254,18 @@ export default function Home() {
               Réponds à notre questionnaire en 8 étapes pour générer ta séance idéale dans la base de données, suivre tes charges et maîtriser tes macros.
             </p>
 
-            {/* Boutons d'action principaux sur l'accueil */}
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 href="/quiz"
                 className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white font-bold px-5 py-3 rounded-xl text-sm transition shadow-lg shadow-violet-600/30"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
                 <span>Créer ma séance (Quiz)</span>
               </Link>
               <Link
                 href="/exercises"
                 className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 text-white border border-white/15 font-semibold px-5 py-3 rounded-xl text-sm transition"
               >
-                <span>Catalogue</span>
+                <span>Catalogue ({sessionsDB.length})</span>
               </Link>
               <Link
                 href="/nutrition"
@@ -233,113 +273,131 @@ export default function Home() {
               >
                 <span>Nutrition</span>
               </Link>
-              
-              {/* Bouton Paramètres sans emoji */}
               <Link
                 href="/settings"
                 className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 font-semibold px-4 py-3 rounded-xl text-sm transition"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
                 <span>Paramètres</span>
               </Link>
             </div>
           </div>
 
-          {/* Widget Interactif d'Indice de Récupération */}
-          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 min-w-[290px] sm:min-w-[320px] space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Indice de récupération</span>
-              <span
-                className={`text-xs font-bold px-2.5 py-0.5 rounded border ${
-                  recoveryScore >= 75
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    : recoveryScore >= 50
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                    : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                }`}
-              >
-                {recoveryScore >= 75 ? 'Optimal' : recoveryScore >= 50 ? 'Modéré' : 'Repos conseillé'}
-              </span>
-            </div>
-
-            <div className="flex items-baseline justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-white">{recoveryScore}%</span>
-                <span className="text-xs text-slate-400">({sleepHours}h sommeil)</span>
+          {/* Espace Widgets : SNC & BodyMap */}
+          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+            
+            {/* Widget 1 : Indice de Récupération (Ton code d'origine) */}
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex-1 sm:w-72 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Récupération SNC</span>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                    recoveryScore >= 75
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : recoveryScore >= 50
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  }`}
+                >
+                  {recoveryScore >= 75 ? 'Optimal' : recoveryScore >= 50 ? 'Modéré' : 'Critique'}
+                </span>
               </div>
-              <button
-                onClick={() => setShowRecoveryEditor(!showRecoveryEditor)}
-                className="text-xs font-bold text-violet-400 hover:text-violet-300 underline cursor-pointer"
-              >
-                {showRecoveryEditor ? 'Fermer' : 'Calibrer'}
-              </button>
+
+              <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-white">{recoveryScore}%</span>
+                </div>
+                <button
+                  onClick={() => setShowRecoveryEditor(!showRecoveryEditor)}
+                  className="text-xs font-bold text-violet-400 hover:text-violet-300 underline cursor-pointer"
+                >
+                  {showRecoveryEditor ? 'Fermer' : 'Calibrer'}
+                </button>
+              </div>
+
+              <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 rounded-full transition-all duration-300"
+                  style={{ width: `${recoveryScore}%` }}
+                />
+              </div>
+
+              {showRecoveryEditor && (
+                <div className="space-y-3 pt-2 border-t border-white/10 text-xs">
+                  <div>
+                    <div className="flex justify-between text-slate-300 mb-1">
+                      <span>Sommeil</span>
+                      <span className="font-bold">{sleepHours}h</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={4}
+                      max={10}
+                      step={0.5}
+                      value={sleepHours}
+                      onChange={(e) => saveRecovery(parseFloat(e.target.value), energyLevel, sorenessLevel)}
+                      className="w-full accent-violet-500 cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-slate-300 mb-1">
+                      <span>Énergie</span>
+                      <span className="font-bold">{energyLevel}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={10}
+                      value={energyLevel}
+                      onChange={(e) => saveRecovery(sleepHours, parseInt(e.target.value, 10), sorenessLevel)}
+                      className="w-full accent-emerald-400 cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-slate-300 mb-1">
+                      <span>Courbatures</span>
+                      <span className="font-bold">{sorenessLevel}/10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={10}
+                      value={sorenessLevel}
+                      onChange={(e) => saveRecovery(sleepHours, energyLevel, parseInt(e.target.value, 10))}
+                      className="w-full accent-rose-400 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-violet-500 to-emerald-400 rounded-full transition-all duration-300"
-                style={{ width: `${recoveryScore}%` }}
-              />
-            </div>
-
-            {showRecoveryEditor ? (
-              <div className="space-y-3 pt-2 border-t border-white/10 text-xs">
+            {/* Widget 2 : BodyMap 48h (Nouveau) */}
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex-1 sm:w-64 flex flex-col justify-between relative overflow-hidden">
+              <div className="flex justify-between items-start relative z-10">
                 <div>
-                  <div className="flex justify-between text-slate-300 mb-1">
-                    <span>Sommeil cette nuit</span>
-                    <span className="font-bold">{sleepHours} heures</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={4}
-                    max={10}
-                    step={0.5}
-                    value={sleepHours}
-                    onChange={(e) => saveRecovery(parseFloat(e.target.value), energyLevel, sorenessLevel)}
-                    className="w-full accent-violet-500 cursor-pointer"
-                  />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fraîcheur Musculaire</span>
+                  <div className="text-3xl font-black text-white mt-1">{globalMuscleReadiness}%</div>
                 </div>
-                <div>
-                  <div className="flex justify-between text-slate-300 mb-1">
-                    <span>Niveau d'énergie</span>
-                    <span className="font-bold">{energyLevel} / 10</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={1}
-                    max={10}
-                    value={energyLevel}
-                    onChange={(e) => saveRecovery(sleepHours, parseInt(e.target.value, 10), sorenessLevel)}
-                    className="w-full accent-emerald-400 cursor-pointer"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between text-slate-300 mb-1">
-                    <span>Courbatures musculaires</span>
-                    <span className="font-bold">{sorenessLevel} / 10</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={10}
-                    value={sorenessLevel}
-                    onChange={(e) => saveRecovery(sleepHours, energyLevel, parseInt(e.target.value, 10))}
-                    className="w-full accent-rose-400 cursor-pointer"
-                  />
+                <div className="w-16 h-24 shrink-0">
+                  <BodyMap recovery={recoveryState} />
                 </div>
               </div>
-            ) : (
-              <p className="text-xs text-slate-400">
-                {recoveryScore >= 75
-                  ? 'Ton système nerveux est prêt pour une séance lourde à haute intensité.'
-                  : recoveryScore >= 50
-                  ? 'Privilégie un volume modéré et surveille ton hydratation.'
-                  : 'Fatigue élevée détectée : réduis les charges de 20% ou fais de la mobilité.'}
-              </p>
-            )}
+              
+              <div className="pt-3 mt-3 border-t border-white/10 relative z-10">
+                <div className="text-[9px] uppercase font-bold text-slate-500 mb-1.5">Injecter Stress (Test API)</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {['pectoraux', 'dos', 'jambes', 'bras'].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => simulateWorkoutStress(m)}
+                      className="px-2 py-1 text-[9px] font-bold uppercase rounded bg-white/5 border border-white/10 hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -353,11 +411,6 @@ export default function Home() {
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Apport Nutritionnel</p>
               <h3 className="text-lg font-bold text-slate-900 mt-0.5">Objectif Journalier</h3>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
             </div>
           </div>
 
@@ -424,11 +477,6 @@ export default function Home() {
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Dépense Sportive</p>
               <h3 className="text-lg font-bold text-slate-900 mt-0.5">Charge Hebdomadaire</h3>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
             </div>
           </div>
 
