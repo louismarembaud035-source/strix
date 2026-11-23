@@ -196,8 +196,22 @@ function WorkoutPlayerContent() {
     const history = savedHistory ? JSON.parse(savedHistory) : [];
     localStorage.setItem('strix_workout_history', JSON.stringify([log, ...history]));
 
+    // ENREGISTREMENT DE LA FATIGUE MUSCULAIRE RÉELLE
+    const savedLogs = localStorage.getItem('strix_muscle_history');
+    const muscleLogs = savedLogs ? JSON.parse(savedLogs) : {};
+    
+    session.exercises.forEach((ex) => {
+      muscleLogs[ex.muscle] = Date.now(); // Remet le muscle ciblé à 0% de récupération
+    });
+    localStorage.setItem('strix_muscle_history', JSON.stringify(muscleLogs));
+
     window.dispatchEvent(new Event('strix-update'));
     setIsSessionFinished(true);
+
+    try {
+      const confetti = require('canvas-confetti');
+      confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#7c3aed', '#34d399', '#fbbf24'] });
+    } catch(e) {}
   };
 
   const formatTimer = (sec: number) => {
