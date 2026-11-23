@@ -6,52 +6,50 @@ interface BodyMapProps {
 }
 
 export default function BodyMap({ recovery }: BodyMapProps) {
-  // Détermine la couleur d'un muscle selon son score (0 à 100)
-  // < 30% : Rouge (Fatigue critique)
-  // < 70% : Violet (En récupération)
-  // > 70% : Ardoise (Frais / Prêt)
   const getFill = (muscle: string) => {
     const score = recovery[muscle] ?? 100;
-    if (score < 30) return '#f43f5e'; // rose-500
-    if (score < 70) return '#8b5cf6'; // violet-500
-    return '#334155'; // slate-700
+    if (score < 30) return '#f43f5e'; // rose-500 (Fatigue max)
+    if (score < 70) return '#8b5cf6'; // violet-500 (En récupération)
+    return '#334155'; // slate-700 (Prêt)
   };
 
-  const baseClass = "transition-colors duration-700 ease-in-out";
+  const baseClass = "transition-colors duration-1000 ease-in-out";
 
   return (
-    <svg viewBox="0 0 100 160" className="w-full h-full drop-shadow-2xl">
-      {/* Tête (Neutre) */}
-      <rect x="40" y="5" width="20" height="20" rx="10" fill="#1e293b" />
-      <rect x="46" y="25" width="8" height="8" fill={getFill('dos')} className={baseClass} />
+    <svg viewBox="0 0 200 400" className="w-full h-full drop-shadow-xl" preserveAspectRatio="xMidYMid meet">
+      {/* Tête & Cou */}
+      <path d="M100 20 C85 20, 80 35, 80 50 C80 65, 90 75, 100 75 C110 75, 120 65, 120 50 C120 35, 115 20, 100 20 Z" fill="#1e293b" />
+      <path d="M90 70 L90 85 L110 85 L110 70 Z" fill="#1e293b" />
 
       {/* Épaules */}
-      <rect x="22" y="33" width="14" height="14" rx="4" fill={getFill('epaules')} className={baseClass} />
-      <rect x="64" y="33" width="14" height="14" rx="4" fill={getFill('epaules')} className={baseClass} />
-
-      {/* Grand Dorsal (Dos - visible derrière) */}
-      <rect x="32" y="38" width="4" height="20" rx="2" fill={getFill('dos')} className={baseClass} />
-      <rect x="64" y="38" width="4" height="20" rx="2" fill={getFill('dos')} className={baseClass} />
+      <path d="M90 85 C70 85, 55 95, 50 110 C45 125, 55 135, 65 135 C70 120, 80 110, 90 100 Z" fill={getFill('epaules')} className={baseClass} />
+      <path d="M110 85 C130 85, 145 95, 150 110 C155 125, 145 135, 135 135 C130 120, 120 110, 110 100 Z" fill={getFill('epaules')} className={baseClass} />
 
       {/* Pectoraux */}
-      <rect x="37" y="33" width="12.5" height="16" rx="3" fill={getFill('pectoraux')} className={baseClass} />
-      <rect x="50.5" y="33" width="12.5" height="16" rx="3" fill={getFill('pectoraux')} className={baseClass} />
+      <path d="M99 90 L65 95 C65 110, 75 130, 99 135 Z" fill={getFill('pectoraux')} className={baseClass} />
+      <path d="M101 90 L135 95 C135 110, 125 130, 101 135 Z" fill={getFill('pectoraux')} className={baseClass} />
 
-      {/* Sangle Abdominale & Bassin */}
-      <rect x="39" y="51" width="22" height="26" rx="4" fill={getFill('abdos')} className={baseClass} />
-      <rect x="37" y="79" width="26" height="12" rx="4" fill={getFill('abdos')} className={baseClass} />
+      {/* Abdos */}
+      <path d="M99 138 L75 140 C75 160, 80 180, 99 190 Z" fill={getFill('abdos')} className={baseClass} />
+      <path d="M101 138 L125 140 C125 160, 120 180, 101 190 Z" fill={getFill('abdos')} className={baseClass} />
 
-      {/* Bras (Biceps/Triceps + Avant-bras) */}
-      <rect x="22" y="49" width="12" height="20" rx="4" fill={getFill('bras')} className={baseClass} />
-      <rect x="23" y="71" width="10" height="22" rx="4" fill={getFill('bras')} className={baseClass} />
-      <rect x="66" y="49" width="12" height="20" rx="4" fill={getFill('bras')} className={baseClass} />
-      <rect x="67" y="71" width="10" height="22" rx="4" fill={getFill('bras')} className={baseClass} />
+      {/* Dos (Dorsaux visibles de face sur les flancs) */}
+      <path d="M73 105 C60 120, 65 150, 75 150 C75 130, 75 115, 73 105 Z" fill={getFill('dos')} className={baseClass} />
+      <path d="M127 105 C140 120, 135 150, 125 150 C125 130, 125 115, 127 105 Z" fill={getFill('dos')} className={baseClass} />
 
-      {/* Jambes (Quadriceps + Mollets) */}
-      <rect x="37" y="93" width="12" height="30" rx="4" fill={getFill('jambes')} className={baseClass} />
-      <rect x="51" y="93" width="12" height="30" rx="4" fill={getFill('jambes')} className={baseClass} />
-      <rect x="38" y="125" width="10" height="25" rx="3" fill={getFill('jambes')} className={baseClass} />
-      <rect x="52" y="125" width="10" height="25" rx="3" fill={getFill('jambes')} className={baseClass} />
+      {/* Bras (Biceps/Triceps & Avant-bras) */}
+      <path d="M50 115 C40 130, 35 150, 40 170 C45 190, 55 170, 60 145 C65 125, 55 120, 50 115 Z" fill={getFill('bras')} className={baseClass} />
+      <path d="M150 115 C160 130, 165 150, 160 170 C155 190, 145 170, 140 145 C135 125, 145 120, 150 115 Z" fill={getFill('bras')} className={baseClass} />
+      <path d="M38 175 C30 195, 25 215, 30 230 C35 215, 45 200, 48 180 Z" fill={getFill('bras')} className={baseClass} />
+      <path d="M162 175 C170 195, 175 215, 170 230 C165 215, 155 200, 152 180 Z" fill={getFill('bras')} className={baseClass} />
+
+      {/* Jambes (Quadriceps) */}
+      <path d="M98 195 L70 195 C65 220, 60 260, 75 290 C85 270, 95 240, 98 195 Z" fill={getFill('jambes')} className={baseClass} />
+      <path d="M102 195 L130 195 C135 220, 140 260, 125 290 C115 270, 105 240, 102 195 Z" fill={getFill('jambes')} className={baseClass} />
+
+      {/* Mollets */}
+      <path d="M75 300 C65 320, 70 350, 80 380 C85 360, 90 330, 85 300 Z" fill={getFill('jambes')} className={baseClass} />
+      <path d="M125 300 C135 320, 130 350, 120 380 C115 360, 110 330, 115 300 Z" fill={getFill('jambes')} className={baseClass} />
     </svg>
   );
 }
